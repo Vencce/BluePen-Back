@@ -1,0 +1,10 @@
+Django~=5.2.7
+djangorestframework
+gunicorn
+psycopg2-binary
+dj-database-url
+python-dotenv
+whitenoise
+pillow
+django-cors-headers
+djangorestframework-simplejwt
