@@ -7,6 +7,9 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 
+import threading
+import time
+
 from .models import Produto, Profile, Pedido, ItemPedido, Endereco
 from .serializers import (
     UserSerializer,
@@ -14,6 +17,7 @@ from .serializers import (
     ProdutoSerializer,
     ProfileSerializer,
     PedidoSerializer,
+    PedidoAdminSerializer,
     ItemPedidoSerializer,
     EnderecoSerializer
 )
@@ -55,27 +59,18 @@ class CustomLogoutView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ProdutoViewSet(viewsets.ModelViewSet):
-    """
-    API para gerenciar produtos.
-    Permite listar, criar, recuperar, atualizar e deletar produtos.
-    Apenas administradores podem criar, atualizar e deletar.
-    """
     queryset = Produto.objects.all().order_by('nome')
     serializer_class = ProdutoSerializer
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             self.permission_classes = [permissions.IsAdminUser]
-        else: # 'list', 'retrieve'
+        else: 
             self.permission_classes = [permissions.AllowAny]
         return super().get_permissions()
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
-    """
-    API para gerenciar perfis de usuário.
-    Cada usuário pode ver e editar seu próprio perfil. Apenas administradores podem ver outros.
-    """
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -106,12 +101,6 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
 
 class PedidoViewSet(viewsets.ModelViewSet):
-    """
-    API para gerenciar pedidos.
-    Um usuário pode ver seus próprios pedidos. Administradores podem ver todos.
-    Permite criar pedidos.
-    """
-    serializer_class = PedidoSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -126,28 +115,55 @@ class PedidoViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create':
             return PedidoSerializer
+        
+        if self.request and self.request.user.is_superuser:
+            return PedidoAdminSerializer
+            
         return PedidoSerializer
 
+    def _marcar_como_entregue(self, pedido_id):
+        try:
+            time.sleep(60)
+            pedido = Pedido.objects.get(id=pedido_id)
+            if pedido.status == 'enviado':
+                pedido.status = 'entregue'
+                pedido.save(update_fields=['status'])
+                print(f"Pedido {pedido_id} marcado como 'entregue' automaticamente.")
+        except Pedido.DoesNotExist:
+            print(f"Timer: Pedido {pedido_id} não encontrado.")
+        except Exception as e:
+            print(f"Timer: Erro ao atualizar pedido {pedido_id}: {e}")
+
+    def update(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+            
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        novo_status = request.data.get('status')
+
+        if novo_status == 'enviado' and instance.status != 'enviado':
+            print(f"Iniciando timer de 2 minutos para Pedido {instance.id}")
+            timer = threading.Timer(120.0, self._marcar_como_entregue, [instance.id])
+            timer.start()
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
 
 class EnderecoViewSet(viewsets.ModelViewSet):
-    """
-    API para gerenciar os endereços do usuário.
-    Permite listar, criar, recuperar, atualizar e deletar endereços.
-    Um usuário só pode gerenciar seus próprios endereços.
-    """
     serializer_class = EnderecoSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """
-        Retorna apenas os endereços do usuário logado.
-        """
         return Endereco.objects.filter(user=self.request.user).order_by('apelido')
 
     def perform_create(self, serializer):
-        """
-        Salva o endereço associando-o automaticamente ao usuário logado.
-        """
         if not Endereco.objects.filter(user=self.request.user).exists():
             serializer.save(user=self.request.user, is_principal=True)
         else:
@@ -159,10 +175,6 @@ class EnderecoViewSet(viewsets.ModelViewSet):
         serializer.save()
 
 class UserListView(generics.ListAPIView):
-    """
-    Lista todos os usuários do sistema.
-    Usado no frontend para preencher <select> de 'Funcionário' ou 'Inspetor'.
-    """
     queryset = User.objects.all().order_by('username')
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAdminUser]

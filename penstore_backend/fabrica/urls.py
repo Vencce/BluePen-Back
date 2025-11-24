@@ -4,7 +4,6 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
-#router.register(r'funcionarios', views.FuncionarioViewSet)
 router.register(r'maquinas', views.MaquinaViewSet)
 router.register(r'fornecedores', views.FornecedorViewSet)
 router.register(r'insumos', views.InsumoViewSet)
@@ -20,4 +19,5 @@ router.register(r'logs-estoque', views.LogEstoqueDiarioViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('custos-diarios/processar/', views.ProcessarCustosEstoqueView.as_view(), name='processar-custos'),
 ]

@@ -114,11 +114,27 @@ class PedidoSerializer(serializers.ModelSerializer):
                  print(f"Erro inesperado ao processar itens do pedido: {e}") 
                  raise serializers.ValidationError("Erro interno ao processar itens do pedido.")
         return pedido
+
+class PedidoAdminSerializer(serializers.ModelSerializer):
+    itens = ItemPedidoSerializer(many=True, read_only=True)
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Pedido
+        fields = [
+            'id', 'user', 'total_pedido', 'metodo_pagamento', 'status', 
+            'endereco_cep', 'endereco_rua', 'endereco_numero', 'endereco_complemento', 
+            'endereco_bairro', 'endereco_cidade', 'endereco_estado', 
+            'created_at', 'itens'
+        ]
+        read_only_fields = [
+            'id', 'user', 'total_pedido', 'created_at', 'itens', 
+            'metodo_pagamento', 'endereco_cep', 'endereco_rua', 
+            'endereco_numero', 'endereco_complemento', 'endereco_bairro', 
+            'cidade', 'estado'
+        ]
     
 class EnderecoSerializer(serializers.ModelSerializer):
-    """
-    Serializer para o modelo Endereco, permitindo gerenciar endereços do usuário.
-    """
     user = UserSerializer(read_only=True)
     
     class Meta:

@@ -13,10 +13,6 @@ class Produto(models.Model):
     
     @property
     def estoque_atual(self):
-        """
-        Calcula o estoque atual somando todas as entradas (produção)
-        e subtraindo todas as saídas (vendas) do histórico de movimentos.
-        """
         from fabrica.models import MovimentoProdutoAcabado 
 
         entradas = self.movimentos_produto_acabado.filter(tipo='ENTRADA').aggregate(
@@ -38,7 +34,13 @@ class Profile(models.Model):
     def __str__(self): return self.user.username
 
 class Pedido(models.Model):
-    STATUS_CHOICES = (('pendente', 'Pendente'), ('aprovado', 'Aprovado'), ('enviado', 'Enviado'), ('cancelado', 'Cancelado'))
+    STATUS_CHOICES = (
+        ('pendente', 'Pendente'), 
+        ('aprovado', 'Aprovado'), 
+        ('enviado', 'Enviado'), 
+        ('cancelado', 'Cancelado'),
+        ('entregue', 'Entregue')
+    )
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     total_pedido = models.DecimalField(max_digits=10, decimal_places=2, default=0) 
     metodo_pagamento = models.CharField(max_length=50)
@@ -65,9 +67,6 @@ class ItemPedido(models.Model):
         return 0
     
 class Endereco(models.Model):
-    """
-    Armazena os endereços salvos de um usuário.
-    """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enderecos')
     apelido = models.CharField(max_length=100, help_text="Ex: Casa, Trabalho")
     cep = models.CharField(max_length=10)

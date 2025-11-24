@@ -133,3 +133,16 @@ class LogEstoqueDiario(models.Model):
     lancado_financeiro = models.BooleanField(default=False)
     movimentos = models.TextField(blank=True, null=True)
     def __str__(self): return f"{self.data} - {self.insumo.nome}"
+
+class ComposicaoProduto(models.Model):
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name='composicao')
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT)
+    quantidade_necessaria = models.DecimalField(max_digits=10, decimal_places=4, default=1.0)
+
+    class Meta:
+        unique_together = ('produto', 'insumo')
+        verbose_name = "Composição do Produto"
+        verbose_name_plural = "Composições dos Produtos"
+
+    def __str__(self):
+        return f"{self.produto.nome} -> {self.insumo.nome} (Qtd: {self.quantidade_necessaria})"

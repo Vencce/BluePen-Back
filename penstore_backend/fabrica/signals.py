@@ -2,15 +2,20 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import (
     ControleQualidade, MovimentoProdutoAcabado, OrdemProducao,
-    PedidoCompra, ItemPedidoCompra, MovimentoInsumo, FluxoCaixa, Insumo
+    PedidoCompra, ItemPedidoCompra, MovimentoInsumo, FluxoCaixa, Insumo,
+    ComposicaoProduto
 )
-from loja.models import Produto 
+from loja.models import Produto, Pedido
 
 @receiver(post_save, sender=ControleQualidade)
 def criar_entrada_estoque_apos_aprovacao_cq(sender, instance, created, **kwargs):
-    
+    """
+    1. Cria a ENTRADA no estoque de Produtos Acabados (apenas a quantidade APROVADA).
+    2. Dá a SAIDA no estoque de Insumos (quantidade TOTAL: Aprovada + Rejeitada).
+    """
     if instance.status == 'APROVADO':
         
+        # --- 1. Entrada de Produto Acabado ---
         movimento_existente = MovimentoProdutoAcabado.objects.filter(
             referencia_tabela='ControleQualidade',
             referencia_id=instance.id,
@@ -23,29 +28,65 @@ def criar_entrada_estoque_apos_aprovacao_cq(sender, instance, created, **kwargs)
                 produto_final = ordem_producao.produto_acabado
                 quantidade_aprovada = instance.quantidade_aprovada
                 
-                if not quantidade_aprovada or quantidade_aprovada <= 0:
-                    print(f"Signal (CQ ID: {instance.id}): Falhou. Quantidade Aprovada é nula ou zero.")
-                    return
-
-                custo = produto_final.custo_base_producao_unitario
-                
-                MovimentoProdutoAcabado.objects.create(
-                    produto=produto_final,
-                    tipo='ENTRADA',
-                    quantidade=quantidade_aprovada,
-                    custo_producao_unitario=custo,
-                    referencia_tabela='ControleQualidade',
-                    referencia_id=instance.id
-                )
-                
-                print(f"Signal (CQ ID: {instance.id}): Sucesso! Criado movimento de ENTRADA de {quantidade_aprovada} unidades de {produto_final.nome}.")
+                # Se houve aprovação, cria a entrada do produto final
+                if quantidade_aprovada > 0:
+                    custo = produto_final.custo_base_producao_unitario
+                    MovimentoProdutoAcabado.objects.create(
+                        produto=produto_final,
+                        tipo='ENTRADA',
+                        quantidade=quantidade_aprovada,
+                        custo_producao_unitario=custo,
+                        referencia_tabela='ControleQualidade',
+                        referencia_id=instance.id
+                    )
+                    print(f"Signal (CQ ID: {instance.id}): ENTRADA de {quantidade_aprovada} {produto_final.nome}.")
 
                 if ordem_producao.status != 'CONCLUIDA':
                     ordem_producao.status = 'CONCLUIDA'
                     ordem_producao.save(update_fields=['status'])
                 
             except Exception as e:
-                print(f"Signal (CQ ID: {instance.id}): ERRO ao criar movimento de estoque: {e}")
+                print(f"Signal (CQ ID: {instance.id}): ERRO ao criar movimento de produto: {e}")
+
+        # --- 2. Saída de Insumos (Baseada na produção TOTAL: Aprovada + Rejeitada) ---
+        # Verificamos se já foi descontado para não duplicar em caso de edição
+        insumos_descontados = MovimentoInsumo.objects.filter(
+            referencia_tabela='ControleQualidade',
+            referencia_id=instance.id,
+            tipo='SAIDA'
+        ).exists()
+
+        if not insumos_descontados:
+            try:
+                ordem_producao = instance.ordem_producao
+                produto_final = ordem_producao.produto_acabado
+                
+                # O consumo de insumos considera o que foi gasto no total (boas + ruins)
+                quantidade_total_produzida = instance.quantidade_aprovada + instance.quantidade_rejeitada
+                
+                if quantidade_total_produzida > 0:
+                    composicao_itens = ComposicaoProduto.objects.filter(produto=produto_final)
+                    
+                    if not composicao_itens.exists():
+                         print(f"Signal (CQ ID: {instance.id}): Aviso - Produto '{produto_final.nome}' não tem Ficha Técnica.")
+                    
+                    for item in composicao_itens:
+                        insumo = item.insumo
+                        qtd_consumo = item.quantidade_necessaria * quantidade_total_produzida
+                        
+                        MovimentoInsumo.objects.create(
+                            insumo=insumo,
+                            tipo='SAIDA',
+                            quantidade=qtd_consumo,
+                            custo_unitario_movimento=insumo.custo_unitario,
+                            referencia_tabela='ControleQualidade',
+                            referencia_id=instance.id
+                        )
+                        print(f"Signal (CQ ID: {instance.id}): SAIDA de {qtd_consumo} {insumo.nome} (Matéria-Prima).")
+
+            except Exception as e:
+                print(f"Signal (CQ ID: {instance.id}): ERRO ao descontar insumos: {e}")
+
 
 @receiver(post_save, sender=PedidoCompra)
 def registrar_compra_insumos_e_fluxo_caixa(sender, instance, created, **kwargs):
@@ -98,10 +139,6 @@ def registrar_compra_insumos_e_fluxo_caixa(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=MovimentoInsumo)
 def atualizar_estoque_insumo(sender, instance, created, **kwargs):
-    """
-    Este signal escuta o MovimentoInsumo.
-    Quando um movimento é CRIADO, ele atualiza o Insumo.quantidade_estoque.
-    """
     if created:
         try:
             insumo = instance.insumo
@@ -119,3 +156,23 @@ def atualizar_estoque_insumo(sender, instance, created, **kwargs):
             
         except Exception as e:
             print(f"Signal (MovimentoInsumo ID: {instance.id}): ERRO ao atualizar Insumo.quantidade_estoque: {e}")
+
+@receiver(post_save, sender=Pedido)
+def registrar_venda_no_fluxo_caixa(sender, instance, **kwargs):
+    if instance.status == 'entregue':
+        try:
+            lancamento, created = FluxoCaixa.objects.get_or_create(
+                referencia_tabela='Pedido',
+                referencia_id=instance.id,
+                tipo='ENTRADA',
+                defaults={
+                    'categoria': 'VENDA',
+                    'descricao': f'Recebimento referente ao Pedido #{instance.id}',
+                    'valor': instance.total_pedido,
+                    'data_lancamento': instance.created_at.date(), 
+                }
+            )
+            if created:
+                print(f"Signal (Pedido ID: {instance.id}): Venda registrada no caixa.")
+        except Exception as e:
+            print(f"Signal (Pedido ID: {instance.id}): ERRO ao lançar Venda: {e}")

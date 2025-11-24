@@ -1,26 +1,23 @@
 # fabrica/serializers.py
 from rest_framework import serializers
 from django.conf import settings
-from django.contrib.auth import get_user_model # Importa get_user_model
+from django.contrib.auth import get_user_model
 from .models import (
-    # Funcionario foi removido daqui
     Maquina, Fornecedor, Insumo,
     MovimentoInsumo, MovimentoProdutoAcabado,
     PedidoCompra, ItemPedidoCompra, OrdemProducao,
-    ControleQualidade, Venda, FluxoCaixa, LogEstoqueDiario
+    ControleQualidade, Venda, FluxoCaixa, LogEstoqueDiario,
+    ComposicaoProduto
 )
 from loja.models import Produto 
-from loja.serializers import UserSerializer # Importa UserSerializer da 'loja'
+from loja.serializers import UserSerializer
 
-User = get_user_model() # Pega o modelo User
+User = get_user_model()
 
-# --- DEFINIÇÃO FALTANDO (A CAUSA DO ERRO) ---
-# Serializer de Produto (Leitura)
 class ProdutoReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Produto
         fields = ['id', 'nome', 'preco']
-# ----------------------------------------------
 
 class MaquinaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -61,7 +58,7 @@ class MovimentoInsumoSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class MovimentoProdutoAcabadoSerializer(serializers.ModelSerializer):
-    produto = ProdutoReadSerializer(read_only=True) # Agora 'ProdutoReadSerializer' existe
+    produto = ProdutoReadSerializer(read_only=True)
     produto_id = serializers.PrimaryKeyRelatedField(
         queryset=Produto.objects.all(), source='produto', write_only=True
     )
@@ -84,7 +81,7 @@ class PedidoCompraSerializer(serializers.ModelSerializer):
     fornecedor_id = serializers.PrimaryKeyRelatedField(
         queryset=Fornecedor.objects.all(), source='fornecedor', write_only=True
     )
-    itens_pedido_compra = ItemPedidoCompraSerializer(many=True, read_only=True) # Corrigido
+    itens_pedido_compra = ItemPedidoCompraSerializer(many=True, read_only=True) 
     class Meta:
         model = PedidoCompra
         fields = '__all__'
@@ -94,7 +91,7 @@ class OrdemProducaoSerializer(serializers.ModelSerializer):
     maquina_id = serializers.PrimaryKeyRelatedField(
         queryset=Maquina.objects.all(), source='maquina', write_only=True, required=False, allow_null=True
     )
-    funcionario = UserSerializer(read_only=True) # Usa UserSerializer
+    funcionario = UserSerializer(read_only=True) 
     funcionario_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), 
         source='funcionario', 
@@ -111,7 +108,7 @@ class ControleQualidadeSerializer(serializers.ModelSerializer):
     ordem_producao_id = serializers.PrimaryKeyRelatedField(
         queryset=OrdemProducao.objects.all(), source='ordem_producao', write_only=True
     )
-    inspetor = UserSerializer(read_only=True) # Usa UserSerializer
+    inspetor = UserSerializer(read_only=True) 
     inspetor_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), 
         source='inspetor',
@@ -119,12 +116,28 @@ class ControleQualidadeSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    
+    percentual_aprovacao = serializers.SerializerMethodField()
+    percentual_rejeicao = serializers.SerializerMethodField()
+
     class Meta:
         model = ControleQualidade
         fields = '__all__'
 
+    def get_percentual_aprovacao(self, obj):
+        total = obj.quantidade_aprovada + obj.quantidade_rejeitada
+        if total > 0:
+            return round((obj.quantidade_aprovada / total) * 100, 2)
+        return 0.0
+
+    def get_percentual_rejeicao(self, obj):
+        total = obj.quantidade_aprovada + obj.quantidade_rejeitada
+        if total > 0:
+            return round((obj.quantidade_rejeitada / total) * 100, 2)
+        return 0.0
+
 class VendaSerializer(serializers.ModelSerializer):
-    produto = ProdutoReadSerializer(read_only=True) # Agora 'ProdutoReadSerializer' existe
+    produto = ProdutoReadSerializer(read_only=True) 
     produto_id = serializers.PrimaryKeyRelatedField(
         queryset=Produto.objects.all(), source='produto', write_only=True
     )
@@ -147,3 +160,8 @@ class LogEstoqueDiarioSerializer(serializers.ModelSerializer):
         model = LogEstoqueDiario
         fields = ['id', 'insumo', 'insumo_id', 'data', 'quantidade_inicial', 'quantidade_final', 'custo_estocagem_dia', 'lancado_financeiro', 'movimentos']
         read_only_fields = ['id', 'insumo']
+
+class ComposicaoProdutoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ComposicaoProduto
+        fields = '__all__'

@@ -11,7 +11,8 @@ from .models import (
     OrdemProducao, 
     ControleQualidade,
     Venda, 
-    FluxoCaixa
+    FluxoCaixa,
+    ComposicaoProduto
 )
 
 @admin.register(Fornecedor)
@@ -98,3 +99,10 @@ class FluxoCaixaAdmin(admin.ModelAdmin):
     list_display = ('id', 'tipo', 'categoria', 'valor', 'data_lancamento')
     list_filter = ('tipo', 'categoria', 'data_lancamento')
     search_fields = ('descricao',)
+
+@admin.register(ComposicaoProduto)
+class ComposicaoProdutoAdmin(admin.ModelAdmin):
+    list_display = ('produto', 'insumo', 'quantidade_necessaria')
+    list_filter = ('produto',)
+    search_fields = ('produto__nome', 'insumo__nome')
+    raw_id_fields = ('produto', 'insumo')
