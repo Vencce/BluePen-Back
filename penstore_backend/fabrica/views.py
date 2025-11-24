@@ -84,9 +84,8 @@ class ProcessarCustosEstoqueView(APIView):
     def post(self, request):
         hoje = timezone.now().date()
         
-        # Verifica se já rodou hoje para evitar duplicidade (opcional, mas recomendado)
         ja_processado = FluxoCaixa.objects.filter(
-            categoria='DEPRECIACAO', # Ou ESTOCAGEM
+            categoria='DEPRECIACAO',
             data_lancamento=hoje,
             descricao__startswith="Custo Diário de Estocagem"
         ).exists()
@@ -101,14 +100,14 @@ class ProcessarCustosEstoqueView(APIView):
         for produto in produtos:
             estoque = produto.estoque_atual
             if estoque > 0:
-                custo_produto = estoque * 0.02 # R$ 0,02 por caneta
+                custo_produto = estoque * 0.02 
                 total_custo += float(custo_produto)
                 detalhes.append(f"{produto.nome}: {estoque} un x 0.02")
 
         if total_custo > 0:
             FluxoCaixa.objects.create(
                 tipo='SAIDA',
-                categoria='DEPRECIACAO', # Pode criar essa categoria no model se não existir, ou usar OUTROS
+                categoria='DEPRECIACAO',
                 descricao=f"Custo Diário de Estocagem ({hoje})",
                 valor=total_custo,
                 data_lancamento=hoje

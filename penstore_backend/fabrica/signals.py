@@ -14,8 +14,6 @@ def criar_entrada_estoque_apos_aprovacao_cq(sender, instance, created, **kwargs)
     2. Dá a SAIDA no estoque de Insumos (quantidade TOTAL: Aprovada + Rejeitada).
     """
     if instance.status == 'APROVADO':
-        
-        # --- 1. Entrada de Produto Acabado ---
         movimento_existente = MovimentoProdutoAcabado.objects.filter(
             referencia_tabela='ControleQualidade',
             referencia_id=instance.id,
@@ -27,8 +25,6 @@ def criar_entrada_estoque_apos_aprovacao_cq(sender, instance, created, **kwargs)
                 ordem_producao = instance.ordem_producao
                 produto_final = ordem_producao.produto_acabado
                 quantidade_aprovada = instance.quantidade_aprovada
-                
-                # Se houve aprovação, cria a entrada do produto final
                 if quantidade_aprovada > 0:
                     custo = produto_final.custo_base_producao_unitario
                     MovimentoProdutoAcabado.objects.create(
@@ -48,8 +44,6 @@ def criar_entrada_estoque_apos_aprovacao_cq(sender, instance, created, **kwargs)
             except Exception as e:
                 print(f"Signal (CQ ID: {instance.id}): ERRO ao criar movimento de produto: {e}")
 
-        # --- 2. Saída de Insumos (Baseada na produção TOTAL: Aprovada + Rejeitada) ---
-        # Verificamos se já foi descontado para não duplicar em caso de edição
         insumos_descontados = MovimentoInsumo.objects.filter(
             referencia_tabela='ControleQualidade',
             referencia_id=instance.id,
@@ -60,8 +54,6 @@ def criar_entrada_estoque_apos_aprovacao_cq(sender, instance, created, **kwargs)
             try:
                 ordem_producao = instance.ordem_producao
                 produto_final = ordem_producao.produto_acabado
-                
-                # O consumo de insumos considera o que foi gasto no total (boas + ruins)
                 quantidade_total_produzida = instance.quantidade_aprovada + instance.quantidade_rejeitada
                 
                 if quantidade_total_produzida > 0:
