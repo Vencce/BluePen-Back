@@ -9,7 +9,12 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-i*!f--&zqrna^p0iaz#+3
 
 DEBUG = os.environ.get('DEBUG') == '1' 
 
-ALLOWED_HOSTS = ['bluepen.vercel.app', 'seu-app-do-render.onrender.com', '127.0.0.1'] 
+ALLOWED_HOSTS = [
+    'bluepen.vercel.app', 
+    'bluepen-back.onrender.com',
+    '.onrender.com',
+    '127.0.0.1' 
+]
 
 
 INSTALLED_APPS = [
