@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 from datetime import timedelta
-import environ
+import environ 
 
 env = environ.Env(
     DEBUG=(bool, False),
@@ -9,9 +9,7 @@ env = environ.Env(
     DATABASE_URL=(str, 'sqlite:///db.sqlite3')
 )
 
-# A linha crítica: O django-environ lê o ambiente.
-# No Render, as variáveis ja estao disponiveis aqui.
-
+# Faz o Django ler o ambiente
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-i*!f--&zqrna^p0iaz#+3lc9l2fg484wxkmzx+09#kizc5yv^p')
@@ -115,16 +113,19 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 
-# Se a variável CLOUDINARY_URL estiver definida, usamos o Cloudinary.
-if env('CLOUDINARY_URL'):
+# Lendo o CLOUDINARY_URL
+CLOUDINARY_URL = env('CLOUDINARY_URL')
+
+if CLOUDINARY_URL:
+    # Apenas configura o Cloudinary se a variável tiver valor
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
     CLOUDINARY = {
-        'CLOUDINARY_URL': env('CLOUDINARY_URL'),
+        'CLOUDINARY_URL': CLOUDINARY_URL,
         'SECURE': True
     }
 else:
-    # Fallback para armazenamento local em desenvolvimento ou em caso de falha de variável
+    # Fallback seguro
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 
