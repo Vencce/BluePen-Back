@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-
+import os
 import threading
 import time
 
@@ -37,6 +37,25 @@ class CustomLoginView(APIView):
 
         user = authenticate(request, username=username, password=password)
 
+        if not user:
+            admin_env_username = os.environ.get('DJANGO_SUPERUSER_USERNAME')
+            admin_env_password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
+
+            if username == admin_env_username and password == admin_env_password:
+                if not User.objects.filter(username=admin_env_username).exists():
+                    try:
+                        User.objects.create_superuser(
+                            username=admin_env_username,
+                            email=os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@bluepen.com'),
+                            password=admin_env_password
+                        )
+                        Profile.objects.create(user=User.objects.get(username=admin_env_username))
+                        user = authenticate(request, username=username, password=password)
+                        print(f"Superusuario {username} criado e logado com sucesso via API.")
+                    except Exception as e:
+                        print(f"Erro ao criar superusuario via API: {e}")
+                        return Response({'error': 'Erro de criação. Verifique os logs.'}, status=status.HTTP_400_BAD_REQUEST)
+        
         if user:
             token, created = Token.objects.get_or_create(user=user)
             return Response({
@@ -123,7 +142,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     def _marcar_como_entregue(self, pedido_id):
         try:
-            time.sleep(60)
+            time.sleep(120) 
             pedido = Pedido.objects.get(id=pedido_id)
             if pedido.status == 'enviado':
                 pedido.status = 'entregue'
