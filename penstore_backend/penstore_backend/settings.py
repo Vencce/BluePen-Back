@@ -1,13 +1,23 @@
 from pathlib import Path
 import os
-import dj_database_url
 from datetime import timedelta
+import environ # <--- NOVO: Importa a biblioteca de parsing
+
+# Inicializa o django-environ
+env = environ.Env(
+    # Define valores padrao
+    DEBUG=(bool, False),
+    CLOUDINARY_URL=(str, ''),
+    DATABASE_URL=(str, 'sqlite:///db.sqlite3')
+)
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-i*!f--&zqrna^p0iaz#+3lc9l2fg484wxkmzx+09#kizc5yv^p')
 
-DEBUG = False 
+# Lendo DEBUG via env
+DEBUG = env('DEBUG') 
 
 ALLOWED_HOSTS = [
     'bluepen.vercel.app', 
@@ -68,11 +78,9 @@ TEMPLATES = [
 WSGI_APPLICATION = 'penstore_backend.wsgi.application'
 
 
+# --- CONFIGURAÇÃO DE BANCO DE DADOS (LÊ DATABASE_URL) ---
 DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:///db.sqlite3', 
-        conn_max_age=600
-    )
+    'default': env.db('DATABASE_URL')
 }
 
 
@@ -100,19 +108,24 @@ USE_I18N = True
 
 USE_TZ = True
 
+
+# --- CONFIGURAÇÃO DE ARQUIVOS ESTÁTICOS E MÍDIA ---
+
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 
+# LÊ A VARIAVEL CLOUDINARY_URL E CONFIGURA O ARMAZENAMENTO
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
+# Adiciona a configuracao CLOUDINARY (necessaria para o SDK)
 CLOUDINARY = {
-    'cloud_name': os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
-    'api_key': os.environ.get('CLOUDINARY_API_KEY', ''),
-    'api_secret': os.environ.get('CLOUDINARY_API_SECRET', '')
+    'CLOUDINARY_URL': env('CLOUDINARY_URL'),
+    'SECURE': True
 }
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
