@@ -1,22 +1,21 @@
 from pathlib import Path
 import os
 from datetime import timedelta
-import environ # <--- NOVO: Importa a biblioteca de parsing
+import environ
 
-# Inicializa o django-environ
 env = environ.Env(
-    # Define valores padrao
     DEBUG=(bool, False),
     CLOUDINARY_URL=(str, ''),
     DATABASE_URL=(str, 'sqlite:///db.sqlite3')
 )
 
+# A linha crítica: O django-environ lê o ambiente.
+# No Render, as variáveis ja estao disponiveis aqui.
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-i*!f--&zqrna^p0iaz#+3lc9l2fg484wxkmzx+09#kizc5yv^p')
 
-# Lendo DEBUG via env
 DEBUG = env('DEBUG') 
 
 ALLOWED_HOSTS = [
@@ -78,7 +77,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'penstore_backend.wsgi.application'
 
 
-# --- CONFIGURAÇÃO DE BANCO DE DADOS (LÊ DATABASE_URL) ---
 DATABASES = {
     'default': env.db('DATABASE_URL')
 }
@@ -117,14 +115,17 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 
-# LÊ A VARIAVEL CLOUDINARY_URL E CONFIGURA O ARMAZENAMENTO
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+# Se a variável CLOUDINARY_URL estiver definida, usamos o Cloudinary.
+if env('CLOUDINARY_URL'):
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-# Adiciona a configuracao CLOUDINARY (necessaria para o SDK)
-CLOUDINARY = {
-    'CLOUDINARY_URL': env('CLOUDINARY_URL'),
-    'SECURE': True
-}
+    CLOUDINARY = {
+        'CLOUDINARY_URL': env('CLOUDINARY_URL'),
+        'SECURE': True
+    }
+else:
+    # Fallback para armazenamento local em desenvolvimento ou em caso de falha de variável
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
