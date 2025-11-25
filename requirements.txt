@@ -8,3 +8,5 @@ whitenoise
 pillow
 django-cors-headers
 djangorestframework-simplejwt
+django-cloudinary-storage
+cloudinary

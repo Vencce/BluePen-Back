@@ -7,14 +7,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-i*!f--&zqrna^p0iaz#+3lc9l2fg484wxkmzx+09#kizc5yv^p')
 
-DEBUG = os.environ.get('DEBUG') == '1' 
+DEBUG = False 
 
 ALLOWED_HOSTS = [
     'bluepen.vercel.app', 
-    'bluepen-back.onrender.com',
-    '.onrender.com',
+    'bluepan-back.onrender.com', 
+    '.onrender.com', 
     '127.0.0.1' 
-]
+] 
 
 
 INSTALLED_APPS = [
@@ -29,6 +29,9 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework.authtoken',
     
+    'cloudinary_storage',
+    'cloudinary',
+    
     'loja',
     'fabrica',
 ]
@@ -38,7 +41,6 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware', 
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -98,13 +100,17 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME')
+CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY')
+CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET')
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
