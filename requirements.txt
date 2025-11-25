@@ -10,3 +10,4 @@ django-cors-headers
 djangorestframework-simplejwt
 django-cloudinary-storage
 cloudinary
+django-environ
