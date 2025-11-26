@@ -65,12 +65,16 @@ WSGI_APPLICATION = 'penstore_backend.wsgi.application'
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
+    # --- CORREÇÃO DO ERRO ImproperlyConfigured ---
+    # Usa dj_database_url.parse para garantir que o ENGINE seja definido corretamente.
+    db_config = dj_database_url.parse(DATABASE_URL)
+    
+    # Adiciona as opções de conexão do Django
+    db_config['CONN_MAX_AGE'] = 600
+    db_config['CONN_HEALTH_CHECKS'] = True
+    
     DATABASES = {
-        'default': dj_database_url.config(
-            default=DATABASE_URL,
-            conn_max_age=600,
-            conn_health_checks=True,
-        )
+        'default': db_config
     }
 else:
     DATABASES = {
@@ -111,17 +115,18 @@ MEDIA_ROOT = BASE_DIR / 'media'
 CLOUDINARY_URL_ENV = os.environ.get('CLOUDINARY_URL')
 
 if 'RENDER_EXTERNAL_HOSTNAME' in os.environ and CLOUDINARY_URL_ENV:
-    # --- PASSO CRÍTICO: Carrega as credenciais do Cloudinary IMEDIATAMENTE ---
+    # --- FORÇANDO CLOUDINARY E CORRIGINDO MEDIA_URL ---
+    
+    # 1. Carrega as credenciais do Cloudinary Imediatamente
     cloudinary.config(CLOUDINARY_URL=CLOUDINARY_URL_ENV)
 
-    # 1. Define o sistema de arquivos como Cloudinary
+    # 2. Define o sistema de arquivos como Cloudinary
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
     
-    # 2. CRUCIAL: Define MEDIA_URL como o CDN do Cloudinary, usando as credenciais que acabamos de carregar.
+    # 3. Define MEDIA_URL como o CDN do Cloudinary (CRÍTICO para URLs corretas)
     try:
         MEDIA_URL = cloudinary.utils.cloudinary_url()[0].replace('http://', 'https://')
     except Exception:
-        # Fallback para caso as credenciais não estejam 100% corretas
         MEDIA_URL = '/media/' 
 
 else:
