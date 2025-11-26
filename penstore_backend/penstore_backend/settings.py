@@ -107,15 +107,24 @@ if not DEBUG:
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# --- LÓGICA DE ATIVAÇÃO SIMPLIFICADA DO CLOUDINARY ---
-# Se CLOUDINARY_URL estiver presente (e não em debug), use o Cloudinary.
-if not DEBUG and os.environ.get('CLOUDINARY_URL'):
-    CLOUDINARY_STORAGE = {
-        'CLOUDINARY_URL': os.environ.get('CLOUDINARY_URL'),
-    }
+# --- FORÇANDO CLOUDINARY NO AMBIENTE RENDER ---
+if 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
+    CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL')
+    
+    if CLOUDINARY_URL:
+        CLOUDINARY_STORAGE = {'CLOUDINARY_URL': CLOUDINARY_URL}
+    
+    # Define o Cloudinary como sistema de armazenamento padrão no Render.
+    # Isso garante que as URLs geradas sejam do Cloudinary e não do /media/ local.
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-else:
+
+elif not DEBUG:
+    # Fallback de produção sem Render (usando FileSystemStorage, mas sem servir arquivos)
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+else:
+    # Desenvolvimento local
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+# --- FIM DA LÓGICA CLOUDINARY ROBUSTA ---
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
