@@ -46,7 +46,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'telefone', 'data_nascimento', 'avatar']
+        fields = ['id', 'user', 'telefone', 'data_nascimento']
         read_only_fields = ['id', 'user']
 
 class ItemPedidoSerializer(serializers.ModelSerializer):

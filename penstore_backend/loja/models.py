@@ -5,6 +5,7 @@ class Produto(models.Model):
     nome = models.CharField(max_length=255)
     preco = models.DecimalField(max_digits=10, decimal_places=2) 
     imagem = models.ImageField(upload_to='produtos/', blank=True, null=True)
+    
     custo_base_producao_unitario = models.DecimalField(max_digits=10, decimal_places=4, default=0.0000)
     preco_venda_unitario_fabrica = models.DecimalField(max_digits=10, decimal_places=4, default=0.0000)
 
@@ -29,7 +30,6 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE) 
     telefone = models.CharField(max_length=20, blank=True)
     data_nascimento = models.DateField(null=True, blank=True)
-    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, default='avatars/default.png')
     def __str__(self): return self.user.username
 
 class Pedido(models.Model):
