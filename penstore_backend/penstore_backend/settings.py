@@ -70,7 +70,6 @@ if DATABASE_URL:
             conn_health_checks=True,
         )
     }
-    DATABASES['default']['OPTIONS'] = {'init_command': "SET default_transaction_isolation TO 'read committed'"}
 else:
     DATABASES = {
         'default': {
