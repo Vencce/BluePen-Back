@@ -104,7 +104,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -118,16 +117,21 @@ if not DEBUG and CLOUDINARY_URL:
 else:
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+CORS_ORIGINS_ENV = os.environ.get('CORS_ORIGINS')
+if CORS_ORIGINS_ENV:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_ENV.split(',')]
+else:
+    CORS_ALLOWED_ORIGINS = []
+
 if not DEBUG and 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
-    CORS_ALLOWED_ORIGINS.append(f"http://{os.environ['RENDER_EXTERNAL_HOSTNAME']}")
-    CORS_ALLOWED_ORIGINS.append(f"https://{os.environ['RENDER_EXTERNAL_HOSTNAME']}")
+    RENDER_HOST = os.environ['RENDER_EXTERNAL_HOSTNAME']
+    CORS_ALLOWED_ORIGINS.append(f"http://{RENDER_HOST}")
+    CORS_ALLOWED_ORIGINS.append(f"https://{RENDER_HOST}")
+
+CORS_ALLOWED_ORIGINS.append("http://localhost:5173")
+CORS_ALLOWED_ORIGINS.append("http://127.0.0.1:5173")
 
 
 REST_FRAMEWORK = {
