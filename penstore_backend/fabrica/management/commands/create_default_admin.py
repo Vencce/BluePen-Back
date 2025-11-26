@@ -6,14 +6,16 @@ class Command(BaseCommand):
     help = 'Cria o superusuário admin de forma não interativa se ele não existir.'
 
     def handle(self, *args, **options):
-        username = os.environ.get('admin')
-        email = os.environ.get('admin@gmail.com', '')
-        password = os.environ.get('Palmito0072005@')
+        # Usamos nomes claros para as variáveis de ambiente que o Render irá fornecer
+        username = os.environ.get('SUPERUSER_USERNAME')
+        email = os.environ.get('SUPERUSER_EMAIL', '')
+        password = os.environ.get('SUPERUSER_PASSWORD')
 
         if not username or not password:
-            self.stdout.write(self.style.WARNING('AVISO: Variáveis de ambiente de superusuário ausentes. Pulando criação automática.'))
+            self.stdout.write(self.style.WARNING('AVISO: Variáveis de ambiente SUPERUSER_USERNAME ou SUPERUSER_PASSWORD ausentes. Pulando criação automática.'))
             return
 
+        # Verifica se o usuário já existe antes de tentar criar
         if not User.objects.filter(username=username).exists():
             try:
                 User.objects.create_superuser(
