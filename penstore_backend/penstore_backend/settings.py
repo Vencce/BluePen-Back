@@ -107,15 +107,22 @@ if not DEBUG:
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL')
+# --- NOVA CONFIGURAÇÃO CLOUDINARY USANDO COMPONENTES SEPARADOS ---
+CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME')
+API_KEY = os.environ.get('CLOUDINARY_API_KEY')
+API_SECRET = os.environ.get('CLOUDINARY_API_SECRET')
 
-if not DEBUG and CLOUDINARY_URL:
+if not DEBUG and CLOUD_NAME and API_KEY and API_SECRET:
     CLOUDINARY_STORAGE = {
-        'CLOUDINARY_URL': CLOUDINARY_URL,
+        'CLOUD_NAME': CLOUD_NAME,
+        'API_KEY': API_KEY,
+        'API_SECRET': API_SECRET,
     }
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 else:
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+# --- FIM DA NOVA CONFIGURAÇÃO ---
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
