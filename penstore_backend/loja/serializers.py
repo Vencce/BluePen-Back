@@ -37,7 +37,7 @@ class ProdutoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Produto
-        fields = ['id', 'nome', 'preco', 'estoque', 'imagem', 
+        fields = ['id', 'nome', 'preco', 'estoque', 
                   'custo_base_producao_unitario', 'preco_venda_unitario_fabrica']
         read_only_fields = ['id', 'estoque'] 
 

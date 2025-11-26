@@ -4,7 +4,6 @@ from django.contrib.auth.models import User
 class Produto(models.Model):
     nome = models.CharField(max_length=255)
     preco = models.DecimalField(max_digits=10, decimal_places=2) 
-    imagem = models.ImageField(upload_to='produtos/', blank=True, null=True)
     
     custo_base_producao_unitario = models.DecimalField(max_digits=10, decimal_places=4, default=0.0000)
     preco_venda_unitario_fabrica = models.DecimalField(max_digits=10, decimal_places=4, default=0.0000)

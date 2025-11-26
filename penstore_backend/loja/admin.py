@@ -15,7 +15,7 @@ class ProdutoAdmin(admin.ModelAdmin):
     
     fieldsets = (
         (None, {
-            'fields': ('nome', 'preco', 'imagem')
+            'fields': ('nome', 'preco')
         }),
         ('Informações de Produção/Fábrica', {
             'fields': ('custo_base_producao_unitario', 'preco_venda_unitario_fabrica')
