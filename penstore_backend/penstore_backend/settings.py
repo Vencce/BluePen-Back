@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import dj_database_url
+import cloudinary.utils
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -104,27 +105,32 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# --- FORÇANDO CLOUDINARY NO AMBIENTE RENDER ---
+# --- LÓGICA CLOUDINARY FINAL ---
 if 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
     CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL')
     
+    # 1. Configura as credenciais do Cloudinary
     if CLOUDINARY_URL:
         CLOUDINARY_STORAGE = {'CLOUDINARY_URL': CLOUDINARY_URL}
     
-    # Define o Cloudinary como sistema de armazenamento padrão no Render.
-    # Isso garante que as URLs geradas sejam do Cloudinary e não do /media/ local.
+    # 2. Define o sistema de arquivos como Cloudinary
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
-elif not DEBUG:
-    # Fallback de produção sem Render (usando FileSystemStorage, mas sem servir arquivos)
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    
+    # 3. CRUCIAL: Substitui MEDIA_URL pela URL base da CDN do Cloudinary 
+    # (Isso força os ImageFields a gerarem a URL correta do Cloudinary)
+    try:
+        # Usa o utilitário do Cloudinary para obter a URL base
+        MEDIA_URL = cloudinary.utils.cloudinary_url()[0].replace('http://', 'https://')
+    except Exception:
+        # Fallback seguro caso as credenciais não funcionem na inicialização
+        MEDIA_URL = '/media/'
 else:
-    # Desenvolvimento local
+    # Ambiente de Desenvolvimento Local ou Produção não-Render
+    MEDIA_URL = '/media/'
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-# --- FIM DA LÓGICA CLOUDINARY ROBUSTA ---
+# --- FIM DA LÓGICA CLOUDINARY FINAL ---
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
