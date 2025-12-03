@@ -9,10 +9,8 @@ from loja.models import Produto, Pedido
 
 @receiver(post_save, sender=ControleQualidade)
 def criar_entrada_estoque_apos_aprovacao_cq(sender, instance, created, **kwargs):
-    """
-    1. Cria a ENTRADA no estoque de Produtos Acabados (apenas a quantidade APROVADA).
-    2. Dá a SAIDA no estoque de Insumos (quantidade TOTAL: Aprovada + Rejeitada).
-    """
+    
+    # 1. ENTRADA de Produto Acabado (Apenas APROVADO)
     if instance.status == 'APROVADO':
         movimento_existente = MovimentoProdutoAcabado.objects.filter(
             referencia_tabela='ControleQualidade',
@@ -44,6 +42,8 @@ def criar_entrada_estoque_apos_aprovacao_cq(sender, instance, created, **kwargs)
             except Exception as e:
                 print(f"Signal (CQ ID: {instance.id}): ERRO ao criar movimento de produto: {e}")
 
+    # 2. SAIDA de Insumos (Deve ocorrer se APROVADO OU REPROVADO, e apenas uma vez)
+    if instance.status in ['APROVADO', 'REPROVADO']:
         insumos_descontados = MovimentoInsumo.objects.filter(
             referencia_tabela='ControleQualidade',
             referencia_id=instance.id,
@@ -54,6 +54,7 @@ def criar_entrada_estoque_apos_aprovacao_cq(sender, instance, created, **kwargs)
             try:
                 ordem_producao = instance.ordem_producao
                 produto_final = ordem_producao.produto_acabado
+                # Consumo total (Aprovado + Rejeitado)
                 quantidade_total_produzida = instance.quantidade_aprovada + instance.quantidade_rejeitada
                 
                 if quantidade_total_produzida > 0:
