@@ -17,7 +17,7 @@ DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = [
     'bluepen.vercel.app', 
-    'bluepan-back.onrender.com', 
+    'bluepen-back.onrender.com', 
     '.onrender.com', 
     '127.0.0.1' 
 ] 
