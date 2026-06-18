@@ -16,7 +16,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r'produtos', ProdutoViewSet, basename='produto')
-router.register(r'perfis', ProfileViewSet, basename='profile')
+router.register(r'profile', ProfileViewSet, basename='profile')
 router.register(r'pedidos', PedidoViewSet, basename='pedido')
 router.register(r'enderecos', EnderecoViewSet, basename='endereco')
 
