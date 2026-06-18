@@ -11,7 +11,10 @@ from .views import (
     ProfileViewSet,
     PedidoViewSet,
     EnderecoViewSet,
-    UserListView
+    UserListView,
+    VerifyEmailOTPView,
+    RequestPasswordResetOTPView,
+    ResetPasswordWithOTPView
 )
 
 router = DefaultRouter()
@@ -29,4 +32,7 @@ urlpatterns = [
     path('2fa/generate/', GenerateTOTPView.as_view(), name='generate-totp'),
     path('2fa/verify/', VerifyTOTPSetupView.as_view(), name='verify-totp'),
     path('2fa/disable/', DisableTOTPView.as_view(), name='disable-totp'),
+    path('auth/verify-email/', VerifyEmailOTPView.as_view(), name='verify-email'),
+    path('auth/password-reset-request/', RequestPasswordResetOTPView.as_view(), name='password-reset-request'),
+    path('auth/password-reset-confirm/', ResetPasswordWithOTPView.as_view(), name='password-reset-confirm'),
 ]

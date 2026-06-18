@@ -30,6 +30,9 @@ class Profile(models.Model):
     data_nascimento = models.DateField(null=True, blank=True)
     totp_secret = models.CharField(max_length=32, blank=True, null=True)
     is_2fa_enabled = models.BooleanField(default=False)
+    email_otp = models.CharField(max_length=6, blank=True, null=True)
+    email_otp_created_at = models.DateTimeField(blank=True, null=True)
+    is_email_verified = models.BooleanField(default=False)
 
     def __str__(self): return self.user.username
 

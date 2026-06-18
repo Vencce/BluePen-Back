@@ -2,6 +2,10 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Produto, Profile, Pedido, ItemPedido, Endereco
 from django.db import transaction
+import random
+from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
 
 class RegisterSerializer(serializers.ModelSerializer):
     password_confirm = serializers.CharField(style={'input_type': 'password'}, write_only=True)
@@ -23,7 +27,24 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data.get('email', ''), 
             password=validated_data['password']
         )
-        Profile.objects.create(user=user)
+        user.is_active = False
+        user.save()
+        
+        otp = str(random.randint(100000, 999999))
+        Profile.objects.create(
+            user=user,
+            email_otp=otp,
+            email_otp_created_at=timezone.now()
+        )
+        
+        send_mail(
+            'Seu código de verificação - BluePen',
+            f'Bem-vindo à BluePen! Seu código de verificação é: {otp}',
+            settings.EMAIL_HOST_USER,
+            [user.email],
+            fail_silently=False,
+        )
+        
         return user
 
 class UserSerializer(serializers.ModelSerializer):
@@ -46,8 +67,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'telefone', 'data_nascimento', 'is_2fa_enabled']
-        read_only_fields = ['id', 'user', 'is_2fa_enabled']
+        fields = ['id', 'user', 'telefone', 'data_nascimento', 'is_2fa_enabled', 'is_email_verified']
+        read_only_fields = ['id', 'user', 'is_2fa_enabled', 'is_email_verified']
 
 class ItemPedidoSerializer(serializers.ModelSerializer):
     produto_id = serializers.PrimaryKeyRelatedField(
@@ -111,7 +132,6 @@ class PedidoSerializer(serializers.ModelSerializer):
                 raise e 
             except Exception as e:
                  pedido.delete()
-                 print(f"Erro inesperado ao processar itens do pedido: {e}") 
                  raise serializers.ValidationError("Erro interno ao processar itens do pedido.")
         return pedido
 

@@ -1,12 +1,14 @@
 from pathlib import Path
 import os
 from datetime import timedelta
-import environ 
+import environ
 
 env = environ.Env(
     DEBUG=(bool, True),
     CLOUDINARY_URL=(str, ''),
-    DATABASE_URL=(str, 'sqlite:///db.sqlite3')
+    DATABASE_URL=(str, 'sqlite:///db.sqlite3'),
+    EMAIL_HOST_USER=(str, ''),
+    EMAIL_HOST_PASSWORD=(str, '')
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,23 +30,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'rest_framework',
     'corsheaders',
     'rest_framework.authtoken',
-    
     'cloudinary_storage',
     'cloudinary',
-    
     'loja',
     'fabrica',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', 
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -71,11 +71,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'penstore_backend.wsgi.application'
 
-
 DATABASES = {
-    'default': env.db('DATABASE_URL')
+    'default': env.db()
 }
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -92,7 +90,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'America/Sao_Paulo' 
@@ -100,7 +97,6 @@ TIME_ZONE = 'America/Sao_Paulo'
 USE_I18N = True
 
 USE_TZ = True
-
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
@@ -120,27 +116,28 @@ if CLOUDINARY_URL:
 else:
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 CORS_ALLOWED_ORIGINS = [
     "https://bluepen.vercel.app",
     "http://localhost:5173", 
-    "http://127.0.0.1:5173", 
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
 ]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.SessionAuthentication', 
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ]
 }
 
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-}
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')

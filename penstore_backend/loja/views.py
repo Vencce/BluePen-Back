@@ -6,10 +6,14 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.core.mail import send_mail
+from django.utils import timezone
+from django.conf import settings
 
 import threading
 import time
 import pyotp
+import random
 
 from .models import Produto, Profile, Pedido, ItemPedido, Endereco
 from .serializers import (
@@ -29,6 +33,88 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
+class VerifyEmailOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        
+        user = get_object_or_404(User, email=email)
+        profile = get_object_or_404(Profile, user=user)
+
+        if profile.is_email_verified:
+            return Response({'message': 'Email já verificado'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if profile.email_otp == otp and profile.email_otp_created_at:
+            tempo_decorrido = timezone.now() - profile.email_otp_created_at
+            if tempo_decorrido.total_seconds() > 600:
+                return Response({'error': 'Código expirado'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            profile.is_email_verified = True
+            profile.email_otp = None
+            profile.email_otp_created_at = None
+            profile.save()
+            
+            user.is_active = True
+            user.save()
+            
+            return Response({'message': 'Conta verificada com sucesso'}, status=status.HTTP_200_OK)
+        
+        return Response({'error': 'Código inválido'}, status=status.HTTP_400_BAD_REQUEST)
+
+class RequestPasswordResetOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        try:
+            user = User.objects.get(email=email)
+            profile = Profile.objects.get(user=user)
+            
+            otp = str(random.randint(100000, 999999))
+            profile.email_otp = otp
+            profile.email_otp_created_at = timezone.now()
+            profile.save()
+            
+            send_mail(
+                'Recuperação de Senha - BluePen',
+                f'Seu código para redefinir a senha é: {otp}. Ele expira em 10 minutos.',
+                settings.EMAIL_HOST_USER,
+                [user.email],
+                fail_silently=False,
+            )
+            return Response({'message': 'Código enviado para o email'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'message': 'Se o email existir, um código foi enviado.'}, status=status.HTTP_200_OK)
+
+class ResetPasswordWithOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        new_password = request.data.get('new_password')
+        
+        user = get_object_or_404(User, email=email)
+        profile = get_object_or_404(Profile, user=user)
+
+        if profile.email_otp == otp and profile.email_otp_created_at:
+            tempo_decorrido = timezone.now() - profile.email_otp_created_at
+            if tempo_decorrido.total_seconds() > 600:
+                return Response({'error': 'Código expirado'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            user.set_password(new_password)
+            user.save()
+            
+            profile.email_otp = None
+            profile.email_otp_created_at = None
+            profile.save()
+            
+            return Response({'message': 'Senha redefinida com sucesso'}, status=status.HTTP_200_OK)
+            
+        return Response({'error': 'Código inválido'}, status=status.HTTP_400_BAD_REQUEST)
+
 class CustomLoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -40,6 +126,9 @@ class CustomLoginView(APIView):
         user = authenticate(request, username=username, password=password)
 
         if user:
+            if not user.is_active:
+                return Response({'error': 'Conta inativa. Verifique seu email.'}, status=status.HTTP_403_FORBIDDEN)
+
             try:
                 profile = user.profile
             except Profile.DoesNotExist:
@@ -158,7 +247,6 @@ class ProfileViewSet(viewsets.ModelViewSet):
         if request.user.is_superuser or instance.user == request.user:
             return super().partial_update(request, *args, **kwargs)
         return Response(status=status.HTTP_403_FORBIDDEN)
-
 
 class PedidoViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
