@@ -46,8 +46,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'telefone', 'data_nascimento']
-        read_only_fields = ['id', 'user']
+        fields = ['id', 'user', 'telefone', 'data_nascimento', 'is_2fa_enabled']
+        read_only_fields = ['id', 'user', 'is_2fa_enabled']
 
 class ItemPedidoSerializer(serializers.ModelSerializer):
     produto_id = serializers.PrimaryKeyRelatedField(
