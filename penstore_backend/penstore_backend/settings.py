@@ -120,7 +120,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     "https://bluepen.vercel.app",
-    "https://bluepen-back.onrender.com"
+    "https://bluepen-back.onrender.com",
     "http://localhost:5173", 
     "http://localhost:5174",
     "http://127.0.0.1:5173",
