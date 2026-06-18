@@ -9,6 +9,7 @@ from django.conf import settings
 
 class RegisterSerializer(serializers.ModelSerializer):
     password_confirm = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+    
     class Meta:
         model = User
         fields = ['username', 'email', 'password', 'password_confirm']
@@ -16,12 +17,20 @@ class RegisterSerializer(serializers.ModelSerializer):
             'password': {'write_only': True},
             'email': {'required': True, 'allow_blank': False} 
         }
+        
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Este email já está cadastrado em nossa base.")
+        return value
+
     def validate(self, data):
         if data['password'] != data['password_confirm']:
             raise serializers.ValidationError({"password_confirm": "As senhas não conferem."})
         return data
+        
     def create(self, validated_data):
         validated_data.pop('password_confirm') 
+        
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data.get('email', ''), 
@@ -37,14 +46,19 @@ class RegisterSerializer(serializers.ModelSerializer):
             email_otp_created_at=timezone.now()
         )
         
-        send_mail(
-            'Seu código de verificação - BluePen',
-            f'Bem-vindo à BluePen! Seu código de verificação é: {otp}',
-            settings.EMAIL_HOST_USER,
-            [user.email],
-            fail_silently=False,
-        )
-        
+        try:
+            send_mail(
+                'Seu código de verificação - BluePen',
+                f'Bem-vindo à BluePen! Seu código de verificação é: {otp}',
+                settings.EMAIL_HOST_USER,
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            user.delete() 
+            print(f"ERRO DE EMAIL NO RENDER: {str(e)}") 
+            raise serializers.ValidationError({"email": "Falha na conexão com o servidor de email. A conta não foi criada."})
+            
         return user
 
 class UserSerializer(serializers.ModelSerializer):
