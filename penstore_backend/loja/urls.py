@@ -3,22 +3,30 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     RegisterView,
     CustomLoginView,
+    CustomLogoutView,
+    GenerateTOTPView,
+    VerifyTOTPSetupView,
+    DisableTOTPView,
     ProdutoViewSet,
+    ProfileViewSet,
     PedidoViewSet,
     EnderecoViewSet,
-    ProfileViewSet,
-    UserListView,
+    UserListView
 )
 
 router = DefaultRouter()
 router.register(r'produtos', ProdutoViewSet, basename='produto')
-router.register(r'profile', ProfileViewSet, basename='profile')
+router.register(r'perfis', ProfileViewSet, basename='profile')
 router.register(r'pedidos', PedidoViewSet, basename='pedido')
 router.register(r'enderecos', EnderecoViewSet, basename='endereco')
 
 urlpatterns = [
-    path('cadastro/', RegisterView.as_view(), name='cadastro'),
-    path('login/', CustomLoginView.as_view(), name='api-login'),
-    path('usuarios/', UserListView.as_view(), name='user-list'),
     path('', include(router.urls)),
+    path('register/', RegisterView.as_view(), name='register'),
+    path('login/', CustomLoginView.as_view(), name='login'),
+    path('logout/', CustomLogoutView.as_view(), name='logout'),
+    path('users/', UserListView.as_view(), name='user-list'),
+    path('2fa/generate/', GenerateTOTPView.as_view(), name='generate-totp'),
+    path('2fa/verify/', VerifyTOTPSetupView.as_view(), name='verify-totp'),
+    path('2fa/disable/', DisableTOTPView.as_view(), name='disable-totp'),
 ]

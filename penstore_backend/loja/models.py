@@ -24,11 +24,13 @@ class Produto(models.Model):
         
         return entradas - saidas
 
-
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE) 
     telefone = models.CharField(max_length=20, blank=True)
     data_nascimento = models.DateField(null=True, blank=True)
+    totp_secret = models.CharField(max_length=32, blank=True, null=True)
+    is_2fa_enabled = models.BooleanField(default=False)
+
     def __str__(self): return self.user.username
 
 class Pedido(models.Model):

@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404
 
 import threading
 import time
+import pyotp
 
 from .models import Produto, Profile, Pedido, ItemPedido, Endereco
 from .serializers import (
@@ -34,10 +35,24 @@ class CustomLoginView(APIView):
     def post(self, request, *args, **kwargs):
         username = request.data.get('username')
         password = request.data.get('password')
+        totp_code = request.data.get('totp_code')
 
         user = authenticate(request, username=username, password=password)
 
         if user:
+            try:
+                profile = user.profile
+            except Profile.DoesNotExist:
+                profile = Profile.objects.create(user=user)
+
+            if profile.is_2fa_enabled:
+                if not totp_code:
+                    return Response({'requires_2fa': True}, status=status.HTTP_200_OK)
+                
+                totp = pyotp.TOTP(profile.totp_secret)
+                if not totp.verify(totp_code):
+                    return Response({'error': 'Código 2FA inválido'}, status=status.HTTP_400_BAD_REQUEST)
+
             token, created = Token.objects.get_or_create(user=user)
             return Response({
                 'token': token.key,
@@ -58,6 +73,52 @@ class CustomLogoutView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class GenerateTOTPView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        profile, created = Profile.objects.get_or_create(user=request.user)
+        
+        if not profile.totp_secret:
+            profile.totp_secret = pyotp.random_base32()
+            profile.save()
+
+        totp = pyotp.TOTP(profile.totp_secret)
+        provisioning_uri = totp.provisioning_uri(name=request.user.email or request.user.username, issuer_name="BluePen")
+
+        return Response({
+            'secret': profile.totp_secret,
+            'provisioning_uri': provisioning_uri
+        })
+
+class VerifyTOTPSetupView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        totp_code = request.data.get('totp_code')
+        profile = get_object_or_404(Profile, user=request.user)
+
+        if not profile.totp_secret:
+            return Response({'error': 'Segredo TOTP não gerado'}, status=status.HTTP_400_BAD_REQUEST)
+
+        totp = pyotp.TOTP(profile.totp_secret)
+        if totp.verify(totp_code):
+            profile.is_2fa_enabled = True
+            profile.save()
+            return Response({'message': '2FA ativado com sucesso'})
+        
+        return Response({'error': 'Código inválido'}, status=status.HTTP_400_BAD_REQUEST)
+
+class DisableTOTPView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        profile = get_object_or_404(Profile, user=request.user)
+        profile.is_2fa_enabled = False
+        profile.totp_secret = None
+        profile.save()
+        return Response({'message': '2FA desativado com sucesso'})
+
 class ProdutoViewSet(viewsets.ModelViewSet):
     queryset = Produto.objects.all().order_by('nome')
     serializer_class = ProdutoSerializer
@@ -68,7 +129,6 @@ class ProdutoViewSet(viewsets.ModelViewSet):
         else: 
             self.permission_classes = [permissions.AllowAny]
         return super().get_permissions()
-
 
 class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
@@ -128,11 +188,10 @@ class PedidoViewSet(viewsets.ModelViewSet):
             if pedido.status == 'enviado':
                 pedido.status = 'entregue'
                 pedido.save(update_fields=['status'])
-                print(f"Pedido {pedido_id} marcado como 'entregue' automaticamente.")
         except Pedido.DoesNotExist:
-            print(f"Timer: Pedido {pedido_id} não encontrado.")
+            pass
         except Exception as e:
-            print(f"Timer: Erro ao atualizar pedido {pedido_id}: {e}")
+            pass
 
     def update(self, request, *args, **kwargs):
         if not request.user.is_superuser:
@@ -143,7 +202,6 @@ class PedidoViewSet(viewsets.ModelViewSet):
         novo_status = request.data.get('status')
 
         if novo_status == 'enviado' and instance.status != 'enviado':
-            print(f"Iniciando timer de 2 minutos para Pedido {instance.id}")
             timer = threading.Timer(120.0, self._marcar_como_entregue, [instance.id])
             timer.start()
         
